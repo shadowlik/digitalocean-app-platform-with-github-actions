@@ -1,0 +1,93 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: registry.digitalocean.com
+  IMAGE_NAME: marquesfernandes/ferramentas-back
+  VERSION: latest # We can use ${{ github.event.inputs.version }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: echo ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm run lint
+      - run: npm run test:cov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build_and_publish:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_API_TOKEN }}
+
+      - name: Build image 
+        run: docker build -t ${{ env.IMAGE_NAME }} .
+
+      - name: Log in to DO Container Registry 
+        run: doctl registry login
+
+      - name: Tag image 
+        run: docker tag ${{ env.IMAGE_NAME }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          
+
+      - name: Push image to DO Container Registry 
+        run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+
+  migrations:
+    runs-on: ubuntu-latest
+    needs: build_and_publish
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run migrations
+        uses: actions/setup-node@v3
+        with:
+            node-version: '18'
+            cache: 'npm'
+      - run: echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+      - run: npx prisma migrate deploy
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: migrations
+    steps:
+      - name: Deploy to DO Apps
+        uses: digitalocean/app_action@v1.1.4
+        with:
+          app_name: ferramentas-back
+          token: ${{ secrets.DO_API_TOKEN }}
+          images: '[
+                    {
+                      "name": "ferramentas-back",
+                      "image":{
+                        "registry_type": "DOCR",
+                        "repository": "ferramentas-back",
+                        "tag": "${{ env.VERSION }}"
+                      }
+                    }
+                  ]'

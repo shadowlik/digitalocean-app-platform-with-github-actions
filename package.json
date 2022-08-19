@@ -1,0 +1,28 @@
+{
+  "name": "digitalocean-app-platform-with-github-actions",
+  "version": "1.0.0",
+  "description": "Digitalocean App Platform w/ GitHub Actions",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shadowlik/digitalocean-app-platform-with-github-actions.git"
+  },
+  "keywords": [
+    "github",
+    "actions",
+    "digitalocean",
+    "do"
+  ],
+  "author": "Henrique Marques <henrique@marquesfernandes.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shadowlik/digitalocean-app-platform-with-github-actions/issues"
+  },
+  "homepage": "https://github.com/shadowlik/digitalocean-app-platform-with-github-actions#readme",
+  "dependencies": {
+    "express": "^4.18.1"
+  }
+}
